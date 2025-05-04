@@ -1,7 +1,7 @@
 // Wait for the DOM to be fully loaded before running the script
 document.addEventListener('DOMContentLoaded', () => {
     // --- Data ---
-    // Combined data including full details for flashcard functionality
+    // Default data (can be replaced by generated data)
     const diseases = [
         {
             name: "Osteogenesis Imperfecta",
@@ -228,6 +228,8 @@ document.addEventListener('DOMContentLoaded', () => {
             `
         }
     ];
+    let currentQuizData = []; // Holds the data for the current quiz (default or generated)
+    let totalDiseases = 0; // Will be updated based on currentQuizData
 
     // --- Game State ---
     let currentDiseaseIndex = 0;
@@ -235,10 +237,8 @@ document.addEventListener('DOMContentLoaded', () => {
     let selectedAnswer = null;
     let answerChecked = false; // Flag to prevent multiple checks
     let currentOptions = []; // Store current options to generate distractors
-    const totalDiseases = diseases.length; // Store total number of diseases
 
     // --- DOM Elements ---
-    // Ensure elements are selected *after* DOM is loaded
     const storyTextEl = document.getElementById('story-text');
     const questionTextEl = document.getElementById('question-text');
     const optionsContainerEl = document.getElementById('options-container');
@@ -255,7 +255,13 @@ document.addEventListener('DOMContentLoaded', () => {
     const progressContainerEl = document.getElementById('progress-container');
     const storySectionEl = document.getElementById('story-section');
     const questionSectionEl = document.getElementById('question-section');
-
+    const quizContentEl = document.getElementById('quiz-content'); // Container for quiz elements
+    const uploadSectionEl = document.getElementById('upload-section'); // PDF upload section
+    const pdfUploadInput = document.getElementById('pdf-upload');
+    const processPdfButton = document.getElementById('process-pdf-button');
+    const loadingIndicator = document.getElementById('loading-indicator');
+    const errorMessage = document.getElementById('error-message');
+    const themeInputEl = document.getElementById('theme-input'); // Added theme input element
 
     // --- Functions ---
 
@@ -270,122 +276,122 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Function to get distractors (other disease names)
     function getDistractors(correctAnswer, count) {
-        const allNames = diseases.map(d => d.answer); // Use the 'answer' field which holds the disease name
+        const allNames = currentQuizData.map(d => d.answer);
         const distractors = [];
-        // Filter out the correct answer to create a pool of potential distractors
         const availableNames = allNames.filter(name => name !== correctAnswer);
-        shuffleArray(availableNames); // Shuffle available names
+        shuffleArray(availableNames);
 
-        // Select the required number of distractors
         for (let i = 0; i < count && i < availableNames.length; i++) {
             distractors.push(availableNames[i]);
         }
-        // Ensure we have enough distractors, if not, reuse some (less ideal but handles small datasets)
-         while (distractors.length < count && availableNames.length > 0) {
-             // This loop is unlikely needed with 16 diseases but good practice
-             distractors.push(availableNames[distractors.length % availableNames.length]);
-         }
+        while (distractors.length < count && availableNames.length > 0) {
+            distractors.push(availableNames[distractors.length % availableNames.length]);
+        }
         return distractors;
     }
 
-
     function loadDisease(index) {
-        // Reset state for the new question
         selectedAnswer = null;
         answerChecked = false;
-        feedbackEl.style.display = 'none'; // Hide feedback section initially
+        feedbackEl.style.display = 'none';
         feedbackTextEl.textContent = '';
-        feedbackDetailsEl.innerHTML = ''; // Clear details
-        feedbackTextEl.className = 'mb-2'; // Reset feedback style
-        nextButton.style.display = 'none'; // Hide next button
-        checkButton.style.display = 'block'; // Show check button
-        checkButton.disabled = true; // Disable check until an option is selected
+        feedbackDetailsEl.innerHTML = '';
+        feedbackTextEl.className = 'mb-2';
+        nextButton.style.display = 'none';
+        checkButton.style.display = 'block';
+        checkButton.disabled = true;
 
-        if (index >= totalDiseases) {
+        if (!currentQuizData || index >= currentQuizData.length) {
+            console.error("Attempted to load invalid disease index or data:", index, currentQuizData);
             showSummary();
             return;
         }
 
-        const disease = diseases[index];
-        storyTextEl.textContent = disease.story;
-        questionTextEl.textContent = disease.question;
+        totalDiseases = currentQuizData.length;
 
-        // Update progress
-        progressTextEl.textContent = `Disease ${index + 1} / ${totalDiseases}`;
+        const disease = currentQuizData[index];
+        if (!disease) {
+            console.error("Disease data at index is missing:", index, currentQuizData);
+            showSummary();
+            return;
+        }
+
+        storyTextEl.textContent = disease.story || "Scenario not available.";
+        questionTextEl.textContent = disease.question || "Question not available.";
+        feedbackDetailsEl.innerHTML = disease.fullDetails || "";
+
+        progressTextEl.textContent = `Item ${index + 1} / ${totalDiseases}`;
         progressBarEl.style.width = `${((index + 1) / totalDiseases) * 100}%`;
 
-
-        // Clear previous options and create new ones
         optionsContainerEl.innerHTML = '';
         const correctAnswer = disease.answer;
-        const distractors = getDistractors(correctAnswer, 3); // Get 3 distractors
-        currentOptions = shuffleArray([correctAnswer, ...distractors]); // Combine and shuffle
-
+        if (!correctAnswer) {
+            console.error("Missing answer for item:", disease);
+            optionsContainerEl.innerHTML = '<p class="text-red-500">Error: Question data incomplete.</p>';
+            checkButton.style.display = 'none';
+            return;
+        }
+        const distractors = getDistractors(correctAnswer, 3);
+        currentOptions = shuffleArray([correctAnswer, ...distractors]);
 
         currentOptions.forEach(option => {
             const button = document.createElement('button');
             button.textContent = option;
             button.classList.add('btn', 'btn-primary');
-            // Make sure the option text matches exactly what's in the 'answer' field for comparison
             button.onclick = () => selectOption(button, option);
             optionsContainerEl.appendChild(button);
         });
     }
 
     function selectOption(button, option) {
-        if (answerChecked) return; // Don't allow selection after checking
+        if (answerChecked) return;
 
-        // Remove selected style from previously selected button (if any)
         const currentlySelected = optionsContainerEl.querySelector('.btn-selected');
         if (currentlySelected) {
             currentlySelected.classList.remove('btn-selected');
-             currentlySelected.classList.add('btn-primary');
+            currentlySelected.classList.add('btn-primary');
         }
 
-        // Add selected style to the clicked button
         button.classList.remove('btn-primary');
         button.classList.add('btn-selected');
-        selectedAnswer = option; // Store the selected option text
-        checkButton.disabled = false; // Enable check button
+        selectedAnswer = option;
+        checkButton.disabled = false;
     }
 
     function checkAnswer() {
-        if (!selectedAnswer || answerChecked) return; // Only check if an answer is selected and not already checked
+        if (!selectedAnswer || answerChecked) return;
 
-        answerChecked = true; // Mark as checked
-        checkButton.style.display = 'none'; // Hide check button
-        nextButton.style.display = 'block'; // Show next button
-        feedbackEl.style.display = 'block'; // Show feedback section
+        answerChecked = true;
+        checkButton.style.display = 'none';
+        nextButton.style.display = 'block';
+        feedbackEl.style.display = 'block';
 
-        const correctDisease = diseases[currentDiseaseIndex].answer; // Get the correct answer string
-        const fullDetails = diseases[currentDiseaseIndex].fullDetails;
+        const correctDisease = currentQuizData[currentDiseaseIndex].answer;
+        const fullDetails = currentQuizData[currentDiseaseIndex].fullDetails;
         const buttons = optionsContainerEl.querySelectorAll('button');
 
         buttons.forEach(button => {
-            button.disabled = true; // Disable all buttons after checking
-            button.classList.remove('btn-primary', 'btn-selected'); // Remove base styling
+            button.disabled = true;
+            button.classList.remove('btn-primary', 'btn-selected');
 
             if (button.textContent === correctDisease) {
-                button.classList.add('btn-correct'); // Highlight correct answer in green
+                button.classList.add('btn-correct');
             } else if (button.textContent === selectedAnswer) {
-                button.classList.add('btn-incorrect'); // Highlight incorrect selection in red
+                button.classList.add('btn-incorrect');
             } else {
-                 button.classList.add('opacity-50'); // Dim others
+                button.classList.add('opacity-50');
             }
         });
 
-
         if (selectedAnswer === correctDisease) {
             feedbackTextEl.textContent = 'Correct! Well remembered!';
-            feedbackTextEl.className = 'mb-2 feedback-correct'; // Apply correct class
+            feedbackTextEl.className = 'mb-2 feedback-correct';
             score++;
         } else {
             feedbackTextEl.textContent = `Not quite. The correct diagnosis is ${correctDisease}.`;
-             feedbackTextEl.className = 'mb-2 feedback-incorrect'; // Apply incorrect class
+            feedbackTextEl.className = 'mb-2 feedback-incorrect';
         }
-         // Display the full details regardless of correct/incorrect
-         feedbackDetailsEl.innerHTML = fullDetails;
-
+        feedbackDetailsEl.innerHTML = fullDetails || "";
     }
 
     function nextDisease() {
@@ -393,8 +399,9 @@ document.addEventListener('DOMContentLoaded', () => {
         loadDisease(currentDiseaseIndex);
     }
 
-     function showSummary() {
-        // Hide game elements
+    function showSummary() {
+        console.log(`Quiz finished. Score: ${score}/${totalDiseases}`);
+        quizContentEl.style.display = 'none';
         progressContainerEl.style.display = 'none';
         storySectionEl.style.display = 'none';
         questionSectionEl.style.display = 'none';
@@ -402,43 +409,241 @@ document.addEventListener('DOMContentLoaded', () => {
         nextButton.style.display = 'none';
         checkButton.style.display = 'none';
 
-
-        // Show summary
         scoreTextEl.textContent = `You scored ${score} out of ${totalDiseases}!`;
         summarySectionEl.style.display = 'block';
+        uploadSectionEl.style.display = 'block';
     }
 
-    function restartQuiz() {
-        // Reset state
+    function restartQuiz(useGeneratedData = false) {
         currentDiseaseIndex = 0;
         score = 0;
-        shuffleArray(diseases); // Reshuffle diseases for a new order
 
+        if (!useGeneratedData || !currentQuizData || currentQuizData.length === 0) {
+            console.log("Restarting quiz with default data.");
+            currentQuizData = [...diseases];
+        } else {
+            console.log("Restarting quiz with generated data.");
+        }
 
-        // Show game elements
+        if (!currentQuizData || currentQuizData.length === 0) {
+            showError("No quiz data available to start.");
+            uploadSectionEl.style.display = 'block';
+            quizContentEl.style.display = 'none';
+            return;
+        }
+
+        totalDiseases = currentQuizData.length;
+        shuffleArray(currentQuizData);
+
+        uploadSectionEl.style.display = 'none';
+        quizContentEl.style.display = 'block';
         progressContainerEl.style.display = 'block';
         storySectionEl.style.display = 'block';
         questionSectionEl.style.display = 'block';
-        feedbackEl.style.display = 'none'; // Hide feedback until check
+        feedbackEl.style.display = 'none';
         checkButton.style.display = 'block';
-
-
-         // Hide summary
+        checkButton.disabled = true;
+        nextButton.style.display = 'none';
         summarySectionEl.style.display = 'none';
 
-
-        // Load first question
         loadDisease(currentDiseaseIndex);
     }
 
+    async function extractTextFromPdf(file) {
+        const reader = new FileReader();
+        return new Promise((resolve, reject) => {
+            reader.onload = async (event) => {
+                try {
+                    const typedArray = new Uint8Array(event.target.result);
+                    console.log("PDF loaded into ArrayBuffer, initializing pdf.js...");
+                    const pdf = await pdfjsLib.getDocument({ data: typedArray }).promise;
+                    console.log(`PDF has ${pdf.numPages} pages.`);
+                    let fullText = '';
+                    for (let i = 1; i <= pdf.numPages; i++) {
+                        console.log(`Processing page ${i}...`);
+                        const pageStartTime = Date.now();
+                        const page = await pdf.getPage(i);
+                        const textContent = await page.getTextContent();
+                        const pageText = textContent.items.map(item => item.str).join(' ');
+                        fullText += pageText + '\n';
+                        const pageEndTime = Date.now();
+                        console.log(`Extracted ${pageText.length} characters from page ${i} in ${pageEndTime - pageStartTime}ms.`);
+                    }
+                    console.log(`Total extracted text length: ${fullText.length}`);
+                    resolve(fullText.trim());
+                } catch (error) {
+                    console.error('Error reading PDF content with pdf.js:', error);
+                    reject('Failed to read PDF content.');
+                }
+            };
+            reader.onerror = (error) => {
+                console.error('FileReader error:', error);
+                reject('Failed to read the file.');
+            };
+            console.log("Reading PDF file with FileReader...");
+            reader.readAsArrayBuffer(file);
+        });
+    }
 
-    // --- Event Listeners ---
+    async function extractNotesWithAI(text) {
+        console.log("--- Sending Text to Backend for AI Note Extraction ---");
+        try {
+            const response = await fetch('/api/extract-notes', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ notesText: text })
+            });
+
+            if (!response.ok) {
+                let errorData = { error: `HTTP error! status: ${response.status}` };
+                try {
+                    errorData = await response.json();
+                } catch (e) { }
+                throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
+            }
+
+            const data = await response.json();
+            console.log("--- Received Extracted Notes from Backend ---");
+            return data.extractedNotes;
+
+        } catch (error) {
+            console.error('Error calling /api/extract-notes:', error);
+            showError(`Failed to extract notes via backend: ${error.message}`);
+            throw error;
+        }
+    }
+
+    async function themeQuestionsWithAI(extractedNotes, theme) { // Added theme parameter
+        console.log(`--- Sending Extracted Notes to Backend for AI Theming (Theme: ${theme}) ---`);
+        try {
+            const response = await fetch('/api/theme-questions', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ notes: extractedNotes, theme: theme }) // Sending the notes and theme
+            });
+
+            if (!response.ok) {
+                let errorData = { error: `HTTP error! status: ${response.status}` };
+                try {
+                    errorData = await response.json();
+                    if (errorData.rawResponse) {
+                        console.error("Raw AI response on error (from backend):", errorData.rawResponse);
+                    }
+                } catch (e) { }
+                throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
+            }
+
+            const data = await response.json();
+            console.log("--- Received Themed Questions from Backend ---");
+            if (!data.themedQuestions || !Array.isArray(data.themedQuestions)) {
+                console.error("Invalid question data structure received:", data);
+                throw new Error("Invalid question data received from backend.");
+            }
+            return data.themedQuestions;
+
+        } catch (error) {
+            console.error('Error calling /api/theme-questions:', error);
+            showError(`Failed to generate themed questions via backend: ${error.message}`);
+            throw error;
+        }
+    }
+
+    function showLoading(message) {
+        console.log("Loading:", message);
+        loadingIndicator.textContent = message;
+        loadingIndicator.style.display = 'block';
+        errorMessage.style.display = 'none';
+        processPdfButton.disabled = true;
+        pdfUploadInput.disabled = true;
+    }
+
+    function hideLoading() {
+        console.log("Hiding loading indicator.");
+        loadingIndicator.style.display = 'none';
+        processPdfButton.disabled = false;
+        pdfUploadInput.disabled = false;
+    }
+
+    function showError(message) {
+        console.error("Error displayed to user:", message);
+        errorMessage.textContent = message;
+        errorMessage.style.display = 'block';
+    }
+
+    async function handlePdfProcessing() {
+        console.log("handlePdfProcessing started.");
+        const file = pdfUploadInput.files[0];
+        const theme = themeInputEl.value.trim() || 'Default theme'; // Get theme from input, provide default if empty
+        console.log(`Using theme: "${theme}"`);
+
+        if (!file) {
+            showError("Please select a PDF file first.");
+            return;
+        }
+        if (file.type !== "application/pdf") {
+            showError("Please upload a valid PDF file.");
+            return;
+        }
+
+        let generatedQuestions = null;
+
+        showLoading(`Step 1/3: Extracting text from "${file.name}"...`);
+        try {
+            const textStartTime = Date.now();
+            const extractedText = await extractTextFromPdf(file);
+            const textEndTime = Date.now();
+            console.log(`Text extraction completed in ${textEndTime - textStartTime}ms`);
+            if (!extractedText) {
+                console.warn("PDF text extraction returned empty.");
+                showError("Could not extract text from the PDF.");
+                hideLoading();
+                return;
+            }
+
+            showLoading("Step 2/3: AI analyzing notes...");
+            const notesStartTime = Date.now();
+            const notes = await extractNotesWithAI(extractedText);
+            const notesEndTime = Date.now();
+            console.log(`AI note extraction completed in ${notesEndTime - notesStartTime}ms`);
+
+            showLoading(`Step 3/3: AI generating questions themed as "${theme}"...`); // Update loading message
+            const themeStartTime = Date.now();
+            generatedQuestions = await themeQuestionsWithAI(notes, theme); // Pass theme to the function
+            const themeEndTime = Date.now();
+            console.log(`AI question theming completed in ${themeEndTime - themeStartTime}ms`);
+
+            console.log("PDF processing and AI generation successful.");
+            hideLoading();
+
+        } catch (error) {
+            console.error("Error during PDF processing pipeline:", error.message);
+            hideLoading();
+            return;
+        }
+
+        if (generatedQuestions && generatedQuestions.length > 0) {
+            currentQuizData = generatedQuestions;
+            console.log(`Starting quiz with ${currentQuizData.length} generated questions.`);
+            restartQuiz(true);
+        } else {
+            showError("AI generated no questions from the provided notes, or an unexpected issue occurred.");
+            hideLoading();
+            uploadSectionEl.style.display = 'block';
+            quizContentEl.style.display = 'none';
+        }
+    }
+
     checkButton.addEventListener('click', checkAnswer);
     nextButton.addEventListener('click', nextDisease);
-    restartButton.addEventListener('click', restartQuiz);
+    restartButton.addEventListener('click', () => {
+        console.log("Restart button clicked. Using default data.");
+        restartQuiz(false);
+    });
+    processPdfButton.addEventListener('click', handlePdfProcessing);
 
-
-    // --- Initial Load ---
-    shuffleArray(diseases); // Shuffle diseases on initial load
-    loadDisease(currentDiseaseIndex);
+    console.log("Initializing page. Setting up for PDF upload.");
+    quizContentEl.style.display = 'none';
+    uploadSectionEl.style.display = 'block';
+    summarySectionEl.style.display = 'none';
+    hideLoading();
 });
