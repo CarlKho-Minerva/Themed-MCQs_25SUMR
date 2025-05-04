@@ -14,6 +14,33 @@ const genAI = new GoogleGenerativeAI(apiKey);
 const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" }); // Use a capable model
 console.log(`Using Gemini model: ${model.model} (theme-questions)`);
 
+// Helper function to extract JSON array from a string
+function extractJsonArray(text) {
+    if (!text) return null;
+    console.log("Attempting to extract JSON array. Initial text snippet:", text.substring(0, 100)); // Log start
+
+    // Remove markdown backticks first, be more lenient with whitespace
+    let cleanedText = text.replace(/^```json\s*/, '').replace(/\s*```$/, '').trim();
+    console.log("Text after removing backticks snippet:", cleanedText.substring(0, 100));
+
+    // Find the first '[' and the last ']'
+    const firstBracket = cleanedText.indexOf('[');
+    const lastBracket = cleanedText.lastIndexOf(']');
+    console.log(`Found first '[' at ${firstBracket}, last ']' at ${lastBracket}`);
+
+    if (firstBracket === -1 || lastBracket === -1 || lastBracket < firstBracket) {
+        // If no valid array structure is found, return the cleaned text
+        // to let the original JSON.parse attempt handle it (and potentially fail with logs)
+        console.warn("Could not find valid start/end brackets for JSON array extraction. Returning cleaned text.");
+        return cleanedText;
+    }
+
+    // Extract the potential JSON array string
+    const potentialJson = cleanedText.substring(firstBracket, lastBracket + 1);
+    console.log("Extracted potential JSON string snippet:", potentialJson.substring(0, 100));
+    return potentialJson;
+}
+
 module.exports = async (req, res) => {
   const functionStartTime = Date.now();
   console.log(`--- /api/theme-questions invoked (Timestamp: ${functionStartTime}) ---`);
@@ -70,23 +97,24 @@ JSON Output:`;
     console.log(`Gemini API call (theme-questions) completed in ${apiEndTime - apiStartTime}ms.`);
 
     const response = await result.response;
-    let jsonOutput = response.text();
-    console.log("Received raw response from Gemini (theming). Length:", jsonOutput ? jsonOutput.length : 0);
-    // Log first 500 chars of raw response for debugging structure issues, crucial for parsing errors
-    console.log("Raw response snippet (first 500 chars):", jsonOutput ? jsonOutput.substring(0, 500) : "N/A");
+    let rawJsonOutput = response.text(); // Keep original raw response for full logging on error
+    console.log("Received raw response from Gemini (theming). Length:", rawJsonOutput ? rawJsonOutput.length : 0);
+    console.log("Raw response snippet (first 500 chars):", rawJsonOutput ? rawJsonOutput.substring(0, 500) : "N/A");
 
-
-    // Clean the response to ensure it's valid JSON
-    console.log("Attempting to clean raw AI response (remove markdown backticks)...");
-    jsonOutput = jsonOutput.replace(/^```json\s*/, '').replace(/```$/, '').trim();
-    console.log("Cleaned response snippet (first 500 chars):", jsonOutput ? jsonOutput.substring(0, 500) : "N/A");
-
+    // Attempt to extract the JSON array string more robustly
+    console.log("Attempting to extract JSON array from raw AI response using helper function...");
+    let jsonStringToParse = extractJsonArray(rawJsonOutput); // Use the helper function
+    console.log("String to be parsed snippet (first 500 chars):", jsonStringToParse ? jsonStringToParse.substring(0, 500) : "N/A");
 
     // Validate and parse the JSON
     let themedQuestions;
     try {
-        console.log("Attempting to parse cleaned response as JSON...");
-        themedQuestions = JSON.parse(jsonOutput);
+        if (!jsonStringToParse) {
+             throw new Error("Could not extract a potential JSON string from the AI response.");
+        }
+        console.log("Attempting to parse extracted/cleaned response as JSON...");
+        themedQuestions = JSON.parse(jsonStringToParse); // Parse the potentially cleaner string
+
         if (!Array.isArray(themedQuestions)) {
              // This is a critical error if we expect an array
              console.error("Parsed response is not a JSON array. Type:", typeof themedQuestions);
@@ -112,12 +140,13 @@ JSON Output:`;
         console.error('FATAL: Error parsing JSON response from Gemini:', parseError.message);
         // Log the *full* raw response when parsing fails, as the snippet might not show the issue
         console.error('--- Full Raw AI Response causing parse error ---');
-        console.error(jsonOutput);
-        console.error('--- End Raw AI Response ---');
+        console.error(rawJsonOutput); // Log the original raw response
+        console.error('--- String Attempted to Parse ---');
+        console.error(jsonStringToParse); // Log the string that failed parsing
+        console.error('--- End Logs for Parse Error ---');
         // Return error to client
-        return res.status(500).json({ error: 'Failed to parse themed questions from AI response', details: parseError.message, rawResponse: jsonOutput });
+        return res.status(500).json({ error: 'Failed to parse themed questions from AI response', details: parseError.message, rawResponse: rawJsonOutput });
     }
-
 
     res.status(200).json({ themedQuestions });
     const functionEndTime = Date.now();
