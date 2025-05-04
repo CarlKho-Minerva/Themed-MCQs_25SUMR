@@ -1,5 +1,6 @@
 require('dotenv').config();
 const { GoogleGenerativeAI } = require('@google/generative-ai');
+const { GEMINI_MODEL_VERSION } = require('./config');
 
 // Ensure the API key is loaded
 const apiKey = process.env.GEMINI_API_KEY;
@@ -11,7 +12,7 @@ if (!apiKey || apiKey === 'YOUR_API_KEY_HERE') { // Check if it's the placeholde
 }
 
 const genAI = new GoogleGenerativeAI(apiKey);
-const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" }); // Use a capable model
+const model = genAI.getGenerativeModel({ model: GEMINI_MODEL_VERSION }); // Use a capable model
 console.log(`Using Gemini model: ${model.model} (theme-questions)`);
 
 // Helper function to extract JSON array from a string
