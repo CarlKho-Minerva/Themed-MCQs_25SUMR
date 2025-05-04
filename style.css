@@ -1,0 +1,114 @@
+/* filepath: /Users/cvk/Downloads/[CODE] Local Projects/Themed-MCQs_25SUMR/style.css */
+body {
+    font-family: 'Inter', sans-serif;
+    background-color: #1a202c; /* Dark background */
+    color: #e2e8f0; /* Light text */
+}
+.card {
+    background-color: #2d3748; /* Slightly lighter card background */
+    border-radius: 0.75rem; /* Rounded corners */
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    max-height: 95vh; /* Limit card height */
+    overflow-y: auto; /* Allow scrolling within the card if needed */
+}
+/* Scrollbar styling for webkit browsers */
+.card::-webkit-scrollbar {
+    width: 8px;
+}
+.card::-webkit-scrollbar-track {
+    background: #1a202c; /* Darker track */
+    border-radius: 0.75rem;
+}
+.card::-webkit-scrollbar-thumb {
+    background-color: #4a5568; /* Scrollbar handle color */
+    border-radius: 4px;
+    border: 2px solid #1a202c; /* Creates padding around thumb */
+}
+ /* Scrollbar styling for Firefox */
+.card {
+    scrollbar-width: thin;
+    scrollbar-color: #4a5568 #1a202c;
+}
+
+.btn {
+    display: block; /* Make buttons block level */
+    width: 100%; /* Make buttons full width */
+    padding: 0.75rem 1rem;
+    border-radius: 0.5rem;
+    font-weight: 600;
+    text-align: center;
+    transition: background-color 0.2s ease-in-out, transform 0.1s ease;
+    cursor: pointer;
+    border: 1px solid transparent;
+    margin-bottom: 0.5rem; /* Space between buttons */
+}
+.btn-primary {
+    background-color: #4a5568; /* Grayish button */
+    color: #e2e8f0;
+    border-color: #718096;
+}
+.btn-primary:hover {
+    background-color: #718096;
+}
+.btn-primary:active {
+    transform: scale(0.98);
+}
+.btn-next {
+    background-color: #38a169; /* Green button */
+    color: white;
+}
+.btn-next:hover {
+    background-color: #2f855a;
+}
+.btn-selected {
+     background-color: #4299e1; /* Blue for selected */
+     border-color: #63b3ed;
+     color: white;
+}
+.btn-correct {
+    background-color: #38a169; /* Green for correct */
+    border-color: #68d391;
+    color: white;
+}
+.btn-incorrect {
+    background-color: #e53e3e; /* Red for incorrect */
+    border-color: #fc8181;
+    color: white;
+}
+.progress-bar-bg {
+    background-color: #4a5568; /* Darker gray for progress bar background */
+    border-radius: 0.25rem;
+    overflow: hidden;
+}
+.progress-bar-fill {
+    background-color: #4299e1; /* Blue for progress */
+    height: 100%;
+    transition: width 0.3s ease-in-out;
+    border-radius: 0.25rem;
+}
+.feedback {
+    font-weight: 600;
+    text-align: left; /* Align feedback text left */
+    padding: 0.75rem;
+    background-color: #1a202c; /* Darker background for feedback area */
+    border-radius: 0.5rem;
+    margin-top: 1rem;
+    border: 1px solid #4a5568;
+}
+.feedback-correct {
+    color: #68d391; /* Green text */
+}
+.feedback-incorrect {
+    color: #fc8181; /* Red text */
+}
+.details-title {
+    font-weight: bold;
+    color: #a0aec0; /* Lighter gray for titles */
+    margin-top: 0.5rem;
+}
+.details-content {
+    color: #e2e8f0; /* Light text for content */
+    font-weight: normal;
+    font-size: 0.9rem; /* Slightly smaller font for details */
+    margin-left: 0.5rem;
+}
