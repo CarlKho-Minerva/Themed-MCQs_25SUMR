@@ -41,17 +41,20 @@ module.exports = async (req, res) => {
     const promptSummary = `Generate themed MCQs (Theme: ${theme}) based on notes (length: ${notes.length}). Output JSON array.`;
     console.log(`Prompt summary for Gemini: ${promptSummary}`);
 
-    const prompt = `Based on the following extracted notes, generate a list of multiple-choice quiz items.
-Each item should follow this JSON structure:
-{
-  "name": "Concise Name/Topic",
-  "story": "A short, engaging scenario themed around ${theme}. The scenario should subtly hint at the condition or topic.",
-  "question": "A clear multiple-choice question based on the notes.",
-  "answer": "The single correct answer.",
-  "fullDetails": "<div class=\\"details-title\\">Key Info:</div><div class=\\"details-content\\">Relevant details from the notes, formatted with simple HTML (like the example).</div>"
-}
+    // Updated Prompt: More explicit instructions for JSON output and escaping.
+    const prompt = `Based *only* on the following extracted notes, generate a list of multiple-choice quiz items.
 
-Format the entire output as a valid JSON array containing these objects. Do not include any text before or after the JSON array.
+**CRITICAL INSTRUCTIONS:**
+1.  The entire output MUST be a single, valid JSON array. Do NOT include any text, explanations, or markdown formatting (like \`\`\`json) before or after the JSON array.
+2.  Each item in the array MUST be a JSON object strictly following this structure:
+    {
+      "name": "Concise Name/Topic",
+      "story": "A short, engaging scenario themed around ${theme}. The scenario should subtly hint at the condition or topic. Ensure any double quotes (\") within this string are properly escaped as \\\".",
+      "question": "A clear multiple-choice question based on the notes. Ensure any double quotes (\") within this string are properly escaped as \\\".",
+      "answer": "The single correct answer. Ensure any double quotes (\") within this string are properly escaped as \\\".",
+      "fullDetails": "<div class=\\\"details-title\\\">Key Info:</div><div class=\\\"details-content\\\">Relevant details from the notes, formatted with simple HTML (like the example). IMPORTANT: All double quotes (\") within the HTML attributes or content MUST be escaped as \\\" for the JSON to be valid. Example: <div class=\\\"example\\\">Text with \\\"quotes\\\"</div>"
+    }
+3.  Ensure all string values within the JSON are correctly escaped, especially double quotes (\").
 
 Extracted Notes:
 ---
