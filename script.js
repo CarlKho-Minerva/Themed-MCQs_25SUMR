@@ -261,7 +261,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const processPdfButton = document.getElementById('process-pdf-button');
     const loadingIndicator = document.getElementById('loading-indicator');
     const errorMessage = document.getElementById('error-message');
-
+    const themeInputEl = document.getElementById('theme-input'); // Added theme input element
 
     // --- Functions ---
 
@@ -513,13 +513,13 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    async function themeQuestionsWithAI(extractedNotes) {
-        console.log("--- Sending Extracted Notes to Backend for AI Theming ---");
+    async function themeQuestionsWithAI(extractedNotes, theme) { // Added theme parameter
+        console.log(`--- Sending Extracted Notes to Backend for AI Theming (Theme: ${theme}) ---`);
         try {
             const response = await fetch('/api/theme-questions', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ notes: extractedNotes })
+                body: JSON.stringify({ notes: extractedNotes, theme: theme }) // Sending the notes and theme
             });
 
             if (!response.ok) {
@@ -573,6 +573,9 @@ document.addEventListener('DOMContentLoaded', () => {
     async function handlePdfProcessing() {
         console.log("handlePdfProcessing started.");
         const file = pdfUploadInput.files[0];
+        const theme = themeInputEl.value.trim() || 'Default theme'; // Get theme from input, provide default if empty
+        console.log(`Using theme: "${theme}"`);
+
         if (!file) {
             showError("Please select a PDF file first.");
             return;
@@ -603,9 +606,9 @@ document.addEventListener('DOMContentLoaded', () => {
             const notesEndTime = Date.now();
             console.log(`AI note extraction completed in ${notesEndTime - notesStartTime}ms`);
 
-            showLoading("Step 3/3: AI generating themed questions...");
+            showLoading(`Step 3/3: AI generating questions themed as "${theme}"...`); // Update loading message
             const themeStartTime = Date.now();
-            generatedQuestions = await themeQuestionsWithAI(notes);
+            generatedQuestions = await themeQuestionsWithAI(notes, theme); // Pass theme to the function
             const themeEndTime = Date.now();
             console.log(`AI question theming completed in ${themeEndTime - themeStartTime}ms`);
 

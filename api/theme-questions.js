@@ -24,9 +24,9 @@ module.exports = async (req, res) => {
   }
 
   try {
-    // Default theme, could be passed in req.body if needed
-    const theme = 'Valorant agents and scenarios';
-    const { notes } = req.body;
+    // Get theme from request body, provide default if missing
+    const { notes, theme = 'Valorant agents and scenarios' } = req.body;
+    console.log(`Received theme: "${theme}"`);
 
     if (!notes) {
       console.warn("Bad Request: Missing 'notes' in request body.");
