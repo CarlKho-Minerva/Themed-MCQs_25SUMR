@@ -80,7 +80,7 @@ module.exports = async (req, res) => {
       "story": "A short, engaging scenario themed around ${theme}. The scenario should subtly hint at the condition or topic. Ensure any double quotes (\") within this string are properly escaped as \\\".",
       "question": "A clear multiple-choice question based on the notes. Ensure any double quotes (\") within this string are properly escaped as \\\".",
       "answer": "The single correct answer. Ensure any double quotes (\") within this string are properly escaped as \\\".",
-      "fullDetails": "<div class=\\\"details-title\\\">Key Info:</div><div class=\\\"details-content\\\">Relevant details from the notes, formatted with simple HTML (like the example). IMPORTANT: All double quotes (\") within the HTML attributes or content MUST be escaped as \\\" for the JSON to be valid. Example: <div class=\\\"example\\\">Text with \\\"quotes\\\"</div>"
+      "fullDetails": "<div class=\\\"details-title\\\">Explanation:</div><div class=\\\"details-content\\\">A detailed, straightforward, and student-friendly explanation of the answer. Make it as informative as possible, focusing on key facts, reasoning, and what distinguishes the correct answer from distractors. Use clear language and bullet points or short paragraphs for rapid review. Tailor the style to be direct and helpful for quick understanding, but include as much relevant detail as possible from the notes. All double quotes (\") within the HTML attributes or content MUST be escaped as \\\" for the JSON to be valid. Example: <div class=\\\"example\\\">Text with \\\"quotes\\\"</div>"
     }
 3.  Ensure all string values within the JSON are correctly escaped, especially double quotes (\").
 
