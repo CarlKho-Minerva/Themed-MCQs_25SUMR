@@ -1,0 +1,16 @@
+{
+  "name": "themed-mcqs_25sumr",
+  "version": "1.0.0",
+  "description": "Multiple Choice Questions but in your themes for intrinsically-motivated learning. Made for Med Students.",
+  "main": "script.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@google/generative-ai": "^0.24.1",
+    "dotenv": "^16.5.0"
+  }
+}

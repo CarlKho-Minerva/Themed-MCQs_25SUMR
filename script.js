@@ -256,7 +256,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const storySectionEl = document.getElementById('story-section');
     const questionSectionEl = document.getElementById('question-section');
 
-
     // --- Functions ---
 
     // Fisher-Yates (Knuth) Shuffle algorithm
@@ -281,13 +280,12 @@ document.addEventListener('DOMContentLoaded', () => {
             distractors.push(availableNames[i]);
         }
         // Ensure we have enough distractors, if not, reuse some (less ideal but handles small datasets)
-         while (distractors.length < count && availableNames.length > 0) {
-             // This loop is unlikely needed with 16 diseases but good practice
-             distractors.push(availableNames[distractors.length % availableNames.length]);
-         }
+        while (distractors.length < count && availableNames.length > 0) {
+            // This loop is unlikely needed with 16 diseases but good practice
+            distractors.push(availableNames[distractors.length % availableNames.length]);
+        }
         return distractors;
     }
-
 
     function loadDisease(index) {
         // Reset state for the new question
@@ -314,13 +312,11 @@ document.addEventListener('DOMContentLoaded', () => {
         progressTextEl.textContent = `Disease ${index + 1} / ${totalDiseases}`;
         progressBarEl.style.width = `${((index + 1) / totalDiseases) * 100}%`;
 
-
         // Clear previous options and create new ones
         optionsContainerEl.innerHTML = '';
         const correctAnswer = disease.answer;
         const distractors = getDistractors(correctAnswer, 3); // Get 3 distractors
         currentOptions = shuffleArray([correctAnswer, ...distractors]); // Combine and shuffle
-
 
         currentOptions.forEach(option => {
             const button = document.createElement('button');
@@ -339,7 +335,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const currentlySelected = optionsContainerEl.querySelector('.btn-selected');
         if (currentlySelected) {
             currentlySelected.classList.remove('btn-selected');
-             currentlySelected.classList.add('btn-primary');
+            currentlySelected.classList.add('btn-primary');
         }
 
         // Add selected style to the clicked button
@@ -370,10 +366,9 @@ document.addEventListener('DOMContentLoaded', () => {
             } else if (button.textContent === selectedAnswer) {
                 button.classList.add('btn-incorrect'); // Highlight incorrect selection in red
             } else {
-                 button.classList.add('opacity-50'); // Dim others
+                button.classList.add('opacity-50'); // Dim others
             }
         });
-
 
         if (selectedAnswer === correctDisease) {
             feedbackTextEl.textContent = 'Correct! Well remembered!';
@@ -381,11 +376,10 @@ document.addEventListener('DOMContentLoaded', () => {
             score++;
         } else {
             feedbackTextEl.textContent = `Not quite. The correct diagnosis is ${correctDisease}.`;
-             feedbackTextEl.className = 'mb-2 feedback-incorrect'; // Apply incorrect class
+            feedbackTextEl.className = 'mb-2 feedback-incorrect'; // Apply incorrect class
         }
-         // Display the full details regardless of correct/incorrect
-         feedbackDetailsEl.innerHTML = fullDetails;
-
+        // Display the full details regardless of correct/incorrect
+        feedbackDetailsEl.innerHTML = fullDetails;
     }
 
     function nextDisease() {
@@ -393,7 +387,7 @@ document.addEventListener('DOMContentLoaded', () => {
         loadDisease(currentDiseaseIndex);
     }
 
-     function showSummary() {
+    function showSummary() {
         // Hide game elements
         progressContainerEl.style.display = 'none';
         storySectionEl.style.display = 'none';
@@ -401,7 +395,6 @@ document.addEventListener('DOMContentLoaded', () => {
         feedbackEl.style.display = 'none';
         nextButton.style.display = 'none';
         checkButton.style.display = 'none';
-
 
         // Show summary
         scoreTextEl.textContent = `You scored ${score} out of ${totalDiseases}!`;
@@ -414,7 +407,6 @@ document.addEventListener('DOMContentLoaded', () => {
         score = 0;
         shuffleArray(diseases); // Reshuffle diseases for a new order
 
-
         // Show game elements
         progressContainerEl.style.display = 'block';
         storySectionEl.style.display = 'block';
@@ -422,23 +414,121 @@ document.addEventListener('DOMContentLoaded', () => {
         feedbackEl.style.display = 'none'; // Hide feedback until check
         checkButton.style.display = 'block';
 
-
-         // Hide summary
+        // Hide summary
         summarySectionEl.style.display = 'none';
-
 
         // Load first question
         loadDisease(currentDiseaseIndex);
     }
 
+    // --- PDF Processing and AI Interaction ---
+
+    // Function to call the backend API for note extraction
+    async function extractNotesWithAI(text) {
+        console.log("--- Sending Text to Backend for AI Note Extraction ---");
+        try {
+            const response = await fetch('/api/extract-notes', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ notesText: text })
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
+            }
+
+            const data = await response.json();
+            console.log("--- Received Extracted Notes from Backend ---");
+            return data.extractedNotes;
+
+        } catch (error) {
+            console.error('Error calling /api/extract-notes:', error);
+            showError(`Failed to extract notes via backend: ${error.message}`);
+            throw error; // Re-throw to stop the process in handlePdfProcessing
+        }
+    }
+
+    // Function to call the backend API for question generation/theming
+    async function themeQuestionsWithAI(extractedNotes) {
+        console.log("--- Sending Extracted Notes to Backend for AI Theming ---");
+        try {
+            const response = await fetch('/api/theme-questions', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ notes: extractedNotes }) // Sending the notes received from the first API
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                if (errorData.rawResponse) {
+                    console.error("Raw AI response on error:", errorData.rawResponse);
+                }
+                throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
+            }
+
+            const data = await response.json();
+            console.log("--- Received Themed Questions from Backend ---");
+            if (!data.themedQuestions || !Array.isArray(data.themedQuestions)) {
+                throw new Error("Invalid question data received from backend.");
+            }
+            return data.themedQuestions;
+
+        } catch (error) {
+            console.error('Error calling /api/theme-questions:', error);
+            showError(`Failed to generate themed questions via backend: ${error.message}`);
+            throw error; // Re-throw to stop the process in handlePdfProcessing
+        }
+    }
+
+    async function handlePdfProcessing() {
+        const file = pdfUploadInput.files[0];
+        if (!file) {
+            showError("Please select a PDF file first.");
+            return;
+        }
+        if (file.type !== "application/pdf") {
+            showError("Please upload a valid PDF file.");
+            return;
+        }
+
+        let generatedQuestions = null;
+
+        showLoading("Extracting text from PDF...");
+        try {
+            const extractedText = await extractTextFromPdf(file);
+            if (!extractedText) {
+                return;
+            }
+
+            showLoading("AI Processing: Extracting key notes...");
+            const notes = await extractNotesWithAI(extractedText);
+
+            showLoading("AI Processing: Generating themed questions...");
+            generatedQuestions = await themeQuestionsWithAI(notes);
+
+            hideLoading();
+
+        } catch (error) {
+            hideLoading();
+            return;
+        }
+
+        if (generatedQuestions && generatedQuestions.length > 0) {
+            currentQuizData = generatedQuestions;
+            restartQuiz(true);
+        } else {
+            showError("AI generated no questions from the provided notes.");
+            hideLoading();
+        }
+    }
 
     // --- Event Listeners ---
     checkButton.addEventListener('click', checkAnswer);
     nextButton.addEventListener('click', nextDisease);
     restartButton.addEventListener('click', restartQuiz);
 
-
     // --- Initial Load ---
-    shuffleArray(diseases); // Shuffle diseases on initial load
+    shuffleArray(diseases);
     loadDisease(currentDiseaseIndex);
 });
